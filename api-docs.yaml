@@ -1,0 +1,102 @@
+openapi: 3.1.0
+info:
+  title: Market Trend Analyser
+  description: Analyses stock sector trends using momentum-based calculations and concurrent data fetching.
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080
+    description: Local server
+paths:
+  /api/analyze/sector:
+    get:
+      summary: Analyse sector trend
+      description: Fetches historical prices for the given symbols concurrently and returns a momentum-based sector trend report.
+      operationId: analyzeSector
+      parameters:
+        - name: symbols
+          in: query
+          required: true
+          description: 1 to 10 stock symbols
+          example: AAPL,GOOGL,MSFT
+          schema:
+            type: array
+            items:
+              type: string
+            minItems: 1
+            maxItems: 10
+        - name: momentumPeriod
+          in: query
+          required: false
+          description: Number of days for momentum calculation (1-100)
+          example: 14
+          schema:
+            type: integer
+            format: int32
+            default: 14
+            minimum: 1
+            maximum: 100
+      responses:
+        "200":
+          description: Sector trend report
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MarketTrendReport"
+        "400":
+          description: Invalid request parameters
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "502":
+          description: Upstream API error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Unexpected server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+components:
+  schemas:
+    MarketTrendReport:
+      type: object
+      properties:
+        sectorTrend:
+          type: string
+          enum: [BULLISH, BEARISH, NEUTRAL]
+        confidence:
+          type: number
+          format: double
+          description: Proportion of stocks agreeing on the trend direction (0.0 to 1.0)
+        analyzedAt:
+          type: string
+          format: date-time
+        stockMomentums:
+          type: object
+          additionalProperties:
+            $ref: "#/components/schemas/Momentum"
+        failedSymbols:
+          type: array
+          items:
+            type: string
+          description: Symbols that could not be analysed
+        recommendation:
+          type: string
+    Momentum:
+      type: object
+      properties:
+        direction:
+          type: string
+          enum: [BULLISH, BEARISH, NEUTRAL]
+        percentChange:
+          type: number
+          description: Price change percentage over the momentum period
+    ErrorResponse:
+      type: object
+      properties:
+        message:
+          type: string
