@@ -1,13 +1,19 @@
 # Market Trend Analyser
 
-A Spring Boot service that analyses stock sector trends using concurrent data fetching and momentum-based calculations.
+A Spring Boot service that fetches stock price data, publishes it via Kafka, and stores momentum analysis in PostgreSQL for querying.
 
 ## Prerequisites
 
 - Java 21
 - Maven
+- Docker
 
 ## Running
+
+Start infrastructure (Kafka + PostgreSQL):
+```bash
+docker-compose up -d
+```
 
 Build the project:
 ```bash
@@ -29,6 +35,11 @@ Run the tests:
 make test
 ```
 
+Run integration tests (requires Docker):
+```bash
+make integration-test
+```
+
 ## Usage
 
 See `api-docs.yaml` for the full OpenAPI spec. Open in [Swagger Editor](https://editor.swagger.io) to explore and test the API interactively.
@@ -38,18 +49,23 @@ See `api-docs.yaml` for the full OpenAPI spec. Open in [Swagger Editor](https://
 The analyser is composed of the following components:
 
 - **`StockDataClient`**: interface with two implementations — `MockStockDataClient` for local/testing use and `AlphaVantageClient` for real market data. Switched via `stock.api.mode` property.
-- **`StockApiService`**: fetches historical prices for multiple symbols concurrently using Java 21 virtual threads. Partial failures are handled gracefully: if one symbol fails, the rest are still returned.
-- **`MomentumCalculator`**: calculates price momentum for a symbol by comparing the most recent price to the price N days ago, returning a direction (BULLISH/BEARISH/NEUTRAL) and percent change.
-- **`TrendAnalyzer`**: aggregates per-symbol momentum into a sector-wide trend, confidence score, and recommendation.
-- **`MarketTrendService`**: orchestrates the full analysis pipeline.
+- **`StockDataJob`**: scheduled hourly job that fetched symbol data. Publishes a `SectorDataFetched` event to Kafka.
+- **`MarketTrendConsumer`**: Kafka consumer that calculates momentum per symbol and saves results to PostgreSQL.
+- **`StockApiService`**: fetches historical prices for multiple symbols concurrently using Java 21 virtual threads. Partial failures are handled gracefully.
+- **`MomentumCalculator`**: calculates price momentum by comparing the most recent price to the price N days ago, returning a direction (BULLISH/BEARISH/NEUTRAL) and percent change.
+- **`MarketTrendService`**: queries momentum analysis from DB by symbol and date range.
 
 ## Key Technical Decisions
 
-- **Virtual threads** for concurrent stock data fetching
+- **Virtual threads** for concurrent stock data fetching. I/O bound operations benefit from lightweight concurrency without blocking platform threads.
+- **Kafka** for async decoupling between data fetching and analysis — if the consumer fails, the message is redelivered and idempotency handles duplicates.
 - **Conditional beans** (`@ConditionalOnProperty`) to switch between mock and real data clients cleanly at the Spring context level.
-- **Rate limiter** `AlphaVantageClient` configured for the free tier (5 requests/minute) to prevent API abuse.
+- **ShedLock** for distributed job coordination. This ensures exactly one node runs the job at a time.
+- **Manual offset commit**:Kafka offset is committed only after successful DB write, guaranteeing at-least-once processing.
+- **Idempotency** via unique constraint on `(symbol, analyzed_at)`.
+- **Rate limiter** on `AlphaVantageClient` configured for the free tier limits.
 
 ## Constraints
 
 - **Alpha Vantage free tier**: limited to 25 requests/day and 1 request/second. Concurrent requests for multiple symbols may trigger rate limiting. Mock mode is recommended for testing and demonstration.
-- **Momentum only**: the analysis uses price momentum over a configurable period. More sophisticated indicators (RSI, MACD, moving average crossovers) could be added as additional calculators.
+- **Daily granularity**: analysis is based on daily closing prices. Intraday analysis would require a paid Alpha Vantage tier.

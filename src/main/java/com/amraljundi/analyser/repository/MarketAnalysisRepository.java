@@ -7,6 +7,6 @@ import java.time.LocalDate;
 import java.util.List;
 
 public interface MarketAnalysisRepository extends JpaRepository<MarketAnalysis, Long> {
-    // TODO - why did we choose local date?
+
     List<MarketAnalysis> findBySymbolAndAnalyzedAtBetween(String symbol, LocalDate from, LocalDate to);
 }

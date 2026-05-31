@@ -12,7 +12,8 @@ import java.util.concurrent.CountDownLatch;
 public class TestKafkaConsumer {
 
     private final List<SectorDataFetched> receivedEvents = new CopyOnWriteArrayList<>();
-    // TODO - explain what this is
+
+    // Blocks the test thread until a Kafka message is received or timeout expires
     private volatile CountDownLatch latch = new CountDownLatch(1);
 
     @KafkaListener(topics = "sector-data-fetched", groupId = "test-consumer")

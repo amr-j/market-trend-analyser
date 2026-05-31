@@ -17,4 +17,4 @@ integration-test:
 	docker-compose down
 
 test-unit:
-	./mvnw test -Dtest="MomentumCalculatorTest,TrendAnalyzerTest,StockApiServiceTest,MarketTrendServiceTest"
+	./mvnw test -Dtest="!*IT"

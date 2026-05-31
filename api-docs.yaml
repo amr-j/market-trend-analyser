@@ -1,17 +1,17 @@
 openapi: 3.1.0
 info:
   title: Market Trend Analyser
-  description: Analyses stock sector trends using momentum-based calculations and concurrent data fetching.
-  version: 1.0.0
+  description: Fetches stock price data via a scheduled job, publishes to Kafka, and stores momentum analysis in PostgreSQL for querying.
+  version: 2.0.0
 servers:
   - url: http://localhost:8080
     description: Local server
 paths:
-  /api/analyze/sector:
+  /api/analysis/momentum:
     get:
-      summary: Analyse sector trend
-      description: Fetches historical prices for the given symbols concurrently and returns a momentum-based sector trend report.
-      operationId: analyzeSector
+      summary: Get momentum analysis
+      description: Returns momentum analysis for the given symbols over a date range.
+      operationId: getMomentum
       parameters:
         - name: symbols
           in: query
@@ -24,32 +24,31 @@ paths:
               type: string
             minItems: 1
             maxItems: 10
-        - name: momentumPeriod
+        - name: from
           in: query
-          required: false
-          description: Number of days for momentum calculation (1-100)
-          example: 14
+          required: true
+          description: Start date (inclusive)
+          example: "2024-01-01"
           schema:
-            type: integer
-            format: int32
-            default: 14
-            minimum: 1
-            maximum: 100
+            type: string
+            format: date
+        - name: to
+          in: query
+          required: true
+          description: End date (inclusive)
+          example: "2024-01-14"
+          schema:
+            type: string
+            format: date
       responses:
         "200":
-          description: Sector trend report
+          description: Momentum report
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/MarketTrendReport"
         "400":
           description: Invalid request parameters
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "502":
-          description: Upstream API error
           content:
             application/json:
               schema:
@@ -65,36 +64,33 @@ components:
     MarketTrendReport:
       type: object
       properties:
-        sectorTrend:
+        from:
           type: string
-          enum: [BULLISH, BEARISH, NEUTRAL]
-        confidence:
-          type: number
-          format: double
-          description: Proportion of stocks agreeing on the trend direction (0.0 to 1.0)
-        analyzedAt:
+          format: date
+        to:
           type: string
-          format: date-time
+          format: date
         stockMomentums:
           type: object
           additionalProperties:
-            $ref: "#/components/schemas/Momentum"
-        failedSymbols:
-          type: array
-          items:
-            type: string
-          description: Symbols that could not be analysed
-        recommendation:
-          type: string
-    Momentum:
+            type: array
+            items:
+              $ref: "#/components/schemas/MarketAnalysis"
+    MarketAnalysis:
       type: object
       properties:
+        symbol:
+          type: string
+          example: AAPL
         direction:
           type: string
           enum: [BULLISH, BEARISH, NEUTRAL]
         percentChange:
           type: number
           description: Price change percentage over the momentum period
+        analyzedAt:
+          type: string
+          format: date
     ErrorResponse:
       type: object
       properties:
