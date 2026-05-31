@@ -69,3 +69,8 @@ The analyser is composed of the following components:
 
 - **Alpha Vantage free tier**: limited to 25 requests/day and 1 request/second. Concurrent requests for multiple symbols may trigger rate limiting. Mock mode is recommended for testing and demonstration.
 - **Daily granularity**: analysis is based on daily closing prices. Intraday analysis would require a paid Alpha Vantage tier.
+
+## Architecture
+
+### Component Diagram
+![Component Diagram](docs/market-trend-analyser.png)
