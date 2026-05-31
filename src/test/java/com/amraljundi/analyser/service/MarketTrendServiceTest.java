@@ -1,94 +1,68 @@
 package com.amraljundi.analyser.service;
 
-import com.amraljundi.analyser.model.StockPrice;
+import com.amraljundi.analyser.entity.MarketAnalysis;
 import com.amraljundi.analyser.model.StockSymbol;
+import com.amraljundi.analyser.repository.MarketAnalysisRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
-import java.util.Map;
 
-import static com.amraljundi.analyser.model.TrendDirection.BULLISH;
-import static com.amraljundi.analyser.model.TrendDirection.NEUTRAL;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 class MarketTrendServiceTest {
 
     private static final StockSymbol AAPL = new StockSymbol("AAPL");
     private static final StockSymbol GOOGL = new StockSymbol("GOOGL");
-    private static final StockSymbol MSFT = new StockSymbol("MSFT");
 
     private MarketTrendService service;
+    private MarketAnalysisRepository repository;
 
     @BeforeEach
     void setUp() {
-        var stub = new StockApiServiceStub(Map.of(
-                AAPL, buildPrices(AAPL, "100.00", "110.00"),
-                GOOGL, buildPrices(GOOGL, "100.00", "105.00"),
-                MSFT, buildPrices(MSFT, "100.00", "108.00")
-        ));
-        service = new MarketTrendService(stub);
+        repository = mock(MarketAnalysisRepository.class);
+        service = new MarketTrendService(repository);
     }
 
     @Test
-    void returns_report_with_all_analyzed_symbols() {
-        // Given three valid symbols
-        var symbols = List.of(AAPL, GOOGL, MSFT);
+    void returns_momentum_report_for_all_symbols() {
+        // Given analyses exist for both symbols
+        var from = LocalDate.of(2024, 1, 1);
+        var to = LocalDate.of(2024, 1, 14);
 
-        // When analyzing sector trend
-        var report = service.analyze(symbols, 1);
+        when(repository.findBySymbolAndAnalyzedAtBetween("AAPL", from, to))
+                .thenReturn(List.of(new MarketAnalysis("AAPL", "BULLISH", new BigDecimal("5.00"), from)));
+        when(repository.findBySymbolAndAnalyzedAtBetween("GOOGL", from, to))
+                .thenReturn(List.of(new MarketAnalysis("GOOGL", "BEARISH", new BigDecimal("-3.00"), from)));
 
-        // Then report contains all symbols
-        assertEquals(3, report.stockMomentums().size());
+        // When getting momentum
+        var result = service.getMomentum(List.of(AAPL, GOOGL), from, to);
+
+        // Then report contains both symbols
+        assertEquals(from, result.from());
+        assertEquals(to, result.to());
+        assertEquals(2, result.stockMomentums().size());
+        assertEquals("BULLISH", result.stockMomentums().get(AAPL).getFirst().direction());
     }
 
     @Test
-    void returns_bullish_when_all_stocks_trending_up() {
-        // Given two bullish and one bearish stock
-        var symbols = List.of(AAPL, GOOGL, MSFT);
+    void returns_empty_list_for_symbol_with_no_data() {
+        // Given no analyses for AAPL
+        var from = LocalDate.of(2024, 1, 1);
+        var to = LocalDate.of(2024, 1, 14);
 
-        // When analyzing sector trend
-        var report = service.analyze(symbols, 1);
+        when(repository.findBySymbolAndAnalyzedAtBetween("AAPL", from, to))
+                .thenReturn(List.of());
 
-        // Then sector trend is bullish
-        assertEquals(BULLISH, report.sectorTrend());
-    }
+        // When getting momentum
+        var result = service.getMomentum(List.of(AAPL), from, to);
 
-    @Test
-    void returns_neutral_when_below_bullish_threshold() {
-        // Given two out of three stocks bullish (66% - below 70% threshold)
-        var stub = new StockApiServiceStub(Map.of(
-                AAPL, buildPrices(AAPL, "100.00", "110.00"),
-                GOOGL, buildPrices(GOOGL, "100.00", "105.00"),
-                MSFT, buildPrices(MSFT, "110.00", "100.00")
-        ));
-        var localService = new MarketTrendService(stub);
-
-        // When analyzing sector trend
-        var report = localService.analyze(List.of(AAPL, GOOGL, MSFT), 1);
-
-        // Then sector trend is neutral not bullish
-        assertEquals(NEUTRAL, report.sectorTrend());
-    }
-
-    @Test
-    void returns_partial_report_when_some_symbols_fail() {
-        // Given one valid and one unknown symbol
-        var symbols = List.of(AAPL, new StockSymbol("UNKNOWN"));
-
-        // When analyzing sector trend
-        var report = service.analyze(symbols, 1);
-
-        // Then report contains only successful symbol
-        assertEquals(1, report.stockMomentums().size());
-    }
-
-    private List<StockPrice> buildPrices(StockSymbol symbol, String startPrice, String endPrice) {
-        return List.of(
-                new StockPrice(symbol, new BigDecimal(startPrice), LocalDate.of(2024, 1, 1), 1000000),
-                new StockPrice(symbol, new BigDecimal(endPrice), LocalDate.of(2024, 1, 2), 1000000)
-        );
+        // Then empty list is returned for that symbol
+        assertTrue(result.stockMomentums().get(AAPL).isEmpty());
     }
 }

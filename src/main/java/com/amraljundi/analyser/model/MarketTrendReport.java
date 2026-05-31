@@ -1,14 +1,13 @@
 package com.amraljundi.analyser.model;
 
-import java.time.LocalDateTime;
+import com.amraljundi.analyser.entity.MarketAnalysis;
+
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
 public record MarketTrendReport(
-        TrendDirection sectorTrend,
-        double confidence,
-        LocalDateTime analyzedAt,
-        Map<StockSymbol, Momentum> stockMomentums,
-        List<StockSymbol> failedSymbols,
-        String recommendation
+        LocalDate from,
+        LocalDate to,
+        Map<StockSymbol, List<MarketAnalysis>> stockMomentums
 ) {}

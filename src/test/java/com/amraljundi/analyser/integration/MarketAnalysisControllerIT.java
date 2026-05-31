@@ -21,17 +21,18 @@ class MarketAnalysisControllerIT {
     private MockMvc mockMvc;
 
     @Test
-    void returns_sector_trend_report_for_valid_symbols() throws Exception {
-        // Given valid symbols
-        // When analyzing sector trend
-        mockMvc.perform(get("/api/analyze/sector")
-                        .param("symbols", "AAPL", "GOOGL", "MSFT"))
+    void returns_momentum_report_for_valid_symbols() throws Exception {
+        // Given valid symbols and date range
+        // When getting momentum
+        mockMvc.perform(get("/api/analysis/momentum")
+                        .param("symbols", "AAPL", "GOOGL", "MSFT")
+                        .param("from", "2024-01-01")
+                        .param("to", "2024-01-14"))
                 // Then a valid report is returned
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.sectorTrend").exists())
-                .andExpect(jsonPath("$.confidence").exists())
-                .andExpect(jsonPath("$.analyzedAt").exists())
-                .andExpect(jsonPath("$.recommendation").exists())
+                .andExpect(jsonPath("$.from").value("2024-01-01"))
+                .andExpect(jsonPath("$.to").value("2024-01-14"))
+                .andExpect(jsonPath("$.stockMomentums").exists())
                 .andExpect(jsonPath("$.stockMomentums.AAPL").exists())
                 .andExpect(jsonPath("$.stockMomentums.GOOGL").exists())
                 .andExpect(jsonPath("$.stockMomentums.MSFT").exists());
@@ -40,9 +41,11 @@ class MarketAnalysisControllerIT {
     @Test
     void returns_400_when_symbols_list_is_empty() throws Exception {
         // Given empty symbols list
-        // When analyzing sector trend
-        mockMvc.perform(get("/api/analyze/sector")
-                        .param("symbols", ""))
+        // When getting momentum
+        mockMvc.perform(get("/api/analysis/momentum")
+                        .param("symbols", "")
+                        .param("from", "2024-01-01")
+                        .param("to", "2024-01-14"))
                 // Then bad request is returned
                 .andExpect(status().isBadRequest());
     }
@@ -50,36 +53,41 @@ class MarketAnalysisControllerIT {
     @Test
     void returns_400_when_too_many_symbols() throws Exception {
         // Given 11 symbols exceeding max limit
-        // When analyzing sector trend
-        mockMvc.perform(get("/api/analyze/sector")
+        // When getting momentum
+        mockMvc.perform(get("/api/analysis/momentum")
                         .param("symbols", "AAPL", "GOOGL", "MSFT", "AMZN", "META",
-                                "NFLX", "TSLA", "NVDA", "AMD", "INTC", "ORCL"))
+                                "NFLX", "TSLA", "NVDA", "AMD", "INTC", "ORCL")
+                        .param("from", "2024-01-01")
+                        .param("to", "2024-01-14"))
                 // Then bad request is returned
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("Cannot analyze more than 10 symbols at once"));
     }
 
     @Test
-    void returns_400_when_momentum_period_out_of_range() throws Exception {
-        // Given momentum period exceeding max
-        // When analyzing sector trend
-        mockMvc.perform(get("/api/analyze/sector")
+    void returns_400_when_from_date_is_after_to_date() throws Exception {
+        // Given invalid date range
+        // When getting momentum
+        mockMvc.perform(get("/api/analysis/momentum")
                         .param("symbols", "AAPL")
-                        .param("momentumPeriod", "101"))
+                        .param("from", "2024-01-14")
+                        .param("to", "2024-01-01"))
                 // Then bad request is returned
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value("Momentum period must be between 1 and 100"));
+                .andExpect(jsonPath("$.message").value("From date cannot be after to date"));
     }
 
     @Test
-    void returns_partial_report_when_some_symbols_are_unknown() throws Exception {
-        // Given one valid and one unknown symbol
-        // When analyzing sector trend
-        mockMvc.perform(get("/api/analyze/sector")
-                        .param("symbols", "AAPL", "UNKNOWN"))
-                // Then report contains only the known symbol
+    void returns_empty_momentum_for_symbol_with_no_data() throws Exception {
+        // Given a symbol with no data in DB
+        // When getting momentum
+        mockMvc.perform(get("/api/analysis/momentum")
+                        .param("symbols", "AAPL")
+                        .param("from", "2024-01-01")
+                        .param("to", "2024-01-14"))
+                // Then empty list is returned for that symbol
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.stockMomentums.AAPL").exists())
-                .andExpect(jsonPath("$.stockMomentums.UNKNOWN").doesNotExist());
+                .andExpect(jsonPath("$.stockMomentums.AAPL").isArray())
+                .andExpect(jsonPath("$.stockMomentums.AAPL").isEmpty());
     }
 }

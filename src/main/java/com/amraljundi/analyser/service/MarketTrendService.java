@@ -2,42 +2,38 @@ package com.amraljundi.analyser.service;
 
 import com.amraljundi.analyser.model.MarketTrendReport;
 import com.amraljundi.analyser.model.StockSymbol;
-import com.amraljundi.analyser.util.TrendAnalyzer;
+import com.amraljundi.analyser.repository.MarketAnalysisRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
-import static com.amraljundi.analyser.util.MomentumCalculator.calculateMomentum;
 import static java.util.Objects.requireNonNull;
 
 @Service
 public class MarketTrendService {
     private static final Logger log = LoggerFactory.getLogger(MarketTrendService.class);
 
-    private final StockApiService stockApiServiceImpl;
+    private final MarketAnalysisRepository marketAnalysisRepository;
 
-    public MarketTrendService(StockApiService stockApiServiceImpl) {
-        requireNonNull(stockApiServiceImpl, "StockApiService cannot be null");
-        this.stockApiServiceImpl = stockApiServiceImpl;
+    public MarketTrendService(MarketAnalysisRepository marketAnalysisRepository) {
+        requireNonNull(marketAnalysisRepository, "MarketAnalysisRepository cannot be null");
+        this.marketAnalysisRepository = marketAnalysisRepository;
     }
 
-    public MarketTrendReport analyze(List<StockSymbol> symbols, int momentumPeriod) {
-        log.info("Analyzing sector trend for {} symbols with momentum period {}", symbols.size(), momentumPeriod);
+    public MarketTrendReport getMomentum(List<StockSymbol> symbols, LocalDate from, LocalDate to) {
+        log.info("Getting momentum for {} symbols from {} to {}", symbols.size(), from, to);
 
-        final var result = stockApiServiceImpl.fetchHistoricalPricesForSymbols(symbols, momentumPeriod + 1);
-
-        final var momentums = result.prices()
-                .entrySet()
-                .stream()
+        final var stockMomentums = symbols.stream()
                 .collect(Collectors.toMap(
-                        Map.Entry::getKey,
-                        entry -> calculateMomentum(entry.getKey(), entry.getValue(), momentumPeriod)
+                        symbol -> symbol,
+                        symbol -> marketAnalysisRepository.findBySymbolAndAnalyzedAtBetween(
+                                symbol.value(), from, to)
                 ));
 
-        return TrendAnalyzer.analyze(momentums, result.failedSymbols());
+        return new MarketTrendReport(from, to, stockMomentums);
     }
 }
