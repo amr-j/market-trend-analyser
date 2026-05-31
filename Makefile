@@ -10,8 +10,11 @@ run-real:
 test:
 	./mvnw test
 
-test-integration:
-	./mvnw test -Dtest="MarketAnalysisControllerIT"
+integration-test:
+	docker-compose up -d
+	sleep 5
+	./mvnw test -Dtest="*IT"
+	docker-compose down
 
 test-unit:
 	./mvnw test -Dtest="MomentumCalculatorTest,TrendAnalyzerTest,StockApiServiceTest,MarketTrendServiceTest"
