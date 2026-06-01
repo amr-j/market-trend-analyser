@@ -1,5 +1,6 @@
 package com.amraljundi.analyser.entity;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 
 import java.math.BigDecimal;
@@ -15,15 +16,19 @@ public class MarketAnalysis {
     private UUID id;
 
     @Column(name = "symbol", nullable = false)
+    @JsonProperty
     private String symbol;
 
     @Column(name = "direction", nullable = false)
+    @JsonProperty
     private String direction;
 
     @Column(name = "percent_change", nullable = false)
+    @JsonProperty
     private BigDecimal percentChange;
 
     @Column(name = "analyzed_at", nullable = false)
+    @JsonProperty
     private LocalDate analyzedAt;
 
     protected MarketAnalysis() {

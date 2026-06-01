@@ -65,6 +65,9 @@ class MarketTrendAnalyserIT {
                 .andExpect(jsonPath("$.from").value(now().minusDays(14).toString()))
                 .andExpect(jsonPath("$.to").value(now().toString()))
                 .andExpect(jsonPath("$.stockMomentums.AAPL").isArray())
+                .andExpect(jsonPath("$.stockMomentums.AAPL[0].direction").exists())
+                .andExpect(jsonPath("$.stockMomentums.AAPL[0].percentChange").exists())
+                .andExpect(jsonPath("$.stockMomentums.AAPL[0].analyzedAt").exists())
                 .andExpect(jsonPath("$.stockMomentums.GOOGL").isArray())
                 .andExpect(jsonPath("$.stockMomentums.MSFT").isArray());
     }

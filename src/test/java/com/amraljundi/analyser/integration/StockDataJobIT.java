@@ -5,10 +5,12 @@ import com.amraljundi.analyser.entity.JobStatus;
 import com.amraljundi.analyser.job.StockDataJob;
 import com.amraljundi.analyser.model.StockSymbol;
 import com.amraljundi.analyser.repository.JobStatusRepository;
+import com.amraljundi.analyser.repository.MarketAnalysisRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.kafka.test.context.EmbeddedKafka;
 import org.springframework.test.context.TestPropertySource;
 
 import static java.time.LocalDate.now;
@@ -16,6 +18,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.junit.jupiter.api.Assertions.*;
 
 @SpringBootTest
+@EmbeddedKafka(partitions = 1, topics = "sector-data-fetched")
 @TestPropertySource(properties = {
         "stock.api.mode=mock",
         "job.symbols=AAPL,GOOGL,MSFT",
@@ -32,9 +35,13 @@ class StockDataJobIT {
     @Autowired
     private TestKafkaConsumer testKafkaConsumer;
 
+    @Autowired
+    private MarketAnalysisRepository marketAnalysisRepository;
+
     @BeforeEach
     void setUp() {
         jobStatusRepository.deleteAll();
+        marketAnalysisRepository.deleteAll();
         testKafkaConsumer.reset();
     }
 

@@ -4,6 +4,9 @@ build:
 run:
 	./mvnw spring-boot:run
 
+run-dev:
+	./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
+
 run-real:
 	./mvnw spring-boot:run -Dspring-boot.run.jvmArguments="-Dstock.api.mode=real -Dalphavantage.api.key=$(API_KEY)"
 

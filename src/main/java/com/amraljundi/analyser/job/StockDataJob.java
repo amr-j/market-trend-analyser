@@ -3,7 +3,6 @@ package com.amraljundi.analyser.job;
 import com.amraljundi.analyser.config.JobConfig;
 import com.amraljundi.analyser.entity.JobStatus;
 import com.amraljundi.analyser.event.SectorDataFetched;
-import com.amraljundi.analyser.exception.StockDataJobException;
 import com.amraljundi.analyser.model.StockSymbol;
 import com.amraljundi.analyser.repository.JobStatusRepository;
 import com.amraljundi.analyser.service.StockApiService;
@@ -60,8 +59,12 @@ public class StockDataJob {
         final var result = stockApiService.fetchHistoricalPricesForSymbols(symbolsToFetch, jobConfig.lookbackDays());
 
         if (!result.failedSymbols().isEmpty()) {
-            log.error("Failed to fetch data for symbols: {} - aborting job", result.failedSymbols());
-            throw new StockDataJobException("Job aborted due to failed symbols: " + result.failedSymbols());
+            log.warn("Failed to fetch data for symbols: {} - continuing with successful symbols", result.failedSymbols());
+        }
+
+        if (result.prices().isEmpty()) {
+            log.error("All symbols failed to fetch - aborting job");
+            return;
         }
 
         kafkaTemplate.send("sector-data-fetched", new SectorDataFetched(result.prices(), today));
