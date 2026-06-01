@@ -11,7 +11,10 @@ run-real:
 	./mvnw spring-boot:run -Dspring-boot.run.jvmArguments="-Dstock.api.mode=real -Dalphavantage.api.key=$(API_KEY)"
 
 test:
+	docker-compose up -d
+	sleep 5
 	./mvnw test
+	docker-compose down
 
 integration-test:
 	docker-compose up -d
